@@ -241,6 +241,39 @@ fun ChatArea(
         mutableStateOf(lastMessage?.run { sender == "ai" && content.isNotBlank() } == true)
     }
 
+    val chatUserScrollConnection =
+        remember(autoScrollToBottom, onAutoScrollToBottomChange) {
+            object : NestedScrollConnection {
+                override fun onPreScroll(
+                    available: Offset,
+                    source: NestedScrollSource,
+                ): Offset {
+                    if (
+                        source == NestedScrollSource.UserInput &&
+                        autoScrollToBottom
+                    ) {
+                        onAutoScrollToBottomChange?.invoke(false)
+                    }
+                    return Offset.Zero
+                }
+            }
+        }
+
+    LaunchedEffect(
+        scrollState.value,
+        scrollState.maxValue,
+        scrollState.isScrollInProgress,
+        hasNewerDisplayHistory,
+    ) {
+        if (
+            !scrollState.isScrollInProgress &&
+            !hasNewerDisplayHistory &&
+            scrollState.value == scrollState.maxValue
+        ) {
+            onAutoScrollToBottomChange?.invoke(true)
+        }
+    }
+
     val messagesCount = chatHistory.size
     LaunchedEffect(currentChatId, chatHistory.isEmpty()) {
         if (chatHistory.isEmpty()) {
@@ -358,6 +391,7 @@ fun ChatArea(
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = horizontalPadding)
+                    .nestedScroll(chatUserScrollConnection)
                     .verticalScroll(scrollState)
                     .background(Color.Transparent)
                     .padding(top = topPadding, bottom = bottomPadding),
